@@ -14,7 +14,7 @@ python run.py
 ```
 This will train the Hard VQ-VAE model on cpu over the preprocessed Ng20 dataset used in the original paper (and store in the data directory). If you want to run the same program on a single gpu, instead, run the following (multiple gpus have not been tested yet):
 ```
-pythonn run.py -gpu 1
+python run.py -gpu 1
 ```
 If you are comparing the results with other topic models, it is **strongly advised** to add the --evaluate_on_target option, as it will force the coherence evaluation to consider just words present in the training set, rather than all the available GloVe vocabulary (thus matching the configuration of the majority of topic models). The basic usage with such a setting is as follow:
 ```
