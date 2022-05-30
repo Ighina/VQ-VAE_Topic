@@ -9,4 +9,4 @@ You can then pass your data to the run script by adding the data argument to the
 python run.py --data data/<your_folder> -ds custom *other arguments*
 ```
 
-For an example of how to format your data, see the subfolder named wiki50 in this directory.
+For an example of how to format your data, see the subfolder named example in this directory.
