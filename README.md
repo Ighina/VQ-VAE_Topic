@@ -6,6 +6,11 @@ Clone the repository and then install the dependecies by running
 pip install -r requirements.txt
 ```
 in your terminal or virtual environment.
+## Download Word Embeddings
+To run the program you will first need to download GloVe word embeddings, unzip them and copy the relative files in the data directory. You can download the version of GloVe we used from [here](https://nlp.stanford.edu/data/glove.6B.zip). Once downloaded the zipped folder, copy it to the data directory and unzip it: the default version of GloVe embeddings used by run.py is the one contained in "data/glove.6B.300d.txt", but you can change it by passing the --glove_file option to the run script and defining the new location after it:
+```
+python run.py --glove_file data/<your preferred GloVe file>
+```
 # Usage
 ## Basic Usage
 The script can be run immediately by using
