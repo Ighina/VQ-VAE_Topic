@@ -84,5 +84,8 @@ python run.py -s -mh -nh <desired number of heads>
 ## Saved Models
 Once a training script is succesfully completed, you will find the saved model as a torch checkpoint in the pretrained-models directory. You might want to rename the model with a different name for further use.
 
-# Inference
-TO DO
+# Other Options
+ Many other options including training parameters and preprocessing options can be passed to the run.py script. To see all the available options, run the script as follow:
+```
+python run.py --help
+```
