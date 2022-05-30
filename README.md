@@ -89,3 +89,5 @@ Once a training script is succesfully completed, you will find the saved model a
 ```
 python run.py --help
 ```
+# Using your data
+ To use your data as input to the model, follow the instructions in the data folder to import your data in the correct structure and to run the script.
