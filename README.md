@@ -116,3 +116,24 @@ python predict.py -d inputs/<your data folder> --hp experiments/<pre-trained mod
  For an example of how your input data for prediction should be structured look at the inputs/CNN10 folder in this project.
  
  Probabilities and document vectors are stored in the output directory specified inside numpy files (.npy)
+ 
+ # Using pre-trained Model in your Scripts
+ To use the pretrained VQ models directly in a python script, you can load the Predictor class from predict.py and instantiate it with the json loaded from the hyperparameters file. From inside the project folder your python script should include:
+  ```
+from predict import Predictor
+ import json
+ 
+ with open("<your hyperparameters file location>/hyperparameters.json") as f:
+     args = json.load(f)
+ 
+ args["data"] = <path to the data you want to predict probabilities for>
+ args["gpus"] = <the number of gpus you want to use> # include 0 if you want to use cpu
+ 
+ model = Predictor(args)
+
+# If you want to return document vectors use the below line:
+# results, doc_vecs = model.predict(return_topic_vectors=True)
+# Otherwise:
+ results = model.predict()
+```
+ 
