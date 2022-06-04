@@ -166,9 +166,9 @@ def load_data(use_glove, preprocess,
         return train_dataloader, valid_dataloader, test_dataloader, wordToGlove, wordToIndex, cv.vocabulary_
         
     else:
-        assert sentence_encoder is not None, 'You need to provide a SentenceTransformer object to create a sentence level VQ-VAE'
+        assert encoder is not None, 'You need to provide a SentenceTransformer object to create a sentence level VQ-VAE'
         
-        if use_original:
+        if preprocess or dataset!='ng20':
             train_embeddings = encoder.encode(train_data)
             valid_embeddings = encoder.encode(valid_data)
             test_embeddings = encoder.encode(test_data)
@@ -177,9 +177,9 @@ def load_data(use_glove, preprocess,
             valid_embeddings = encoder.encode([' '.join(x) for x in valid_data_preprocessed])
             test_embeddings = encoder.encode([' '.join(x) for x in test_data_preprocessed])
             
-        train_dataset = TensorDataset(train_embeddings, Y_train)
-        valid_dataset = TensorDataset(valid_embeddings, Y_valid)
-        test_dataset = TensorDataset(test_embeddings, Y_test)
+        train_dataset = TensorDataset(torch.tensor(train_embeddings), torch.tensor(Y_train))
+        valid_dataset = TensorDataset(torch.tensor(valid_embeddings), torch.tensor(Y_valid))
+        test_dataset = TensorDataset(torch.tensor(test_embeddings), torch.tensor(Y_test))
         
         train_dataloader = DataLoader(train_dataset, batch_size = batch_size, shuffle = True)
         valid_dataloader = DataLoader(valid_dataset, batch_size = batch_size, shuffle = False)
@@ -187,5 +187,58 @@ def load_data(use_glove, preprocess,
         
         
         return train_dataloader, valid_dataloader, test_dataloader, None, None, cv.vocabulary_
+        
+        
+def load_data_pred(use_glove, preprocess, 
+              data_directory = 'data',
+              encoder = None,
+              just_alpha = False,
+              min_length = 0,
+              max_target = 2000,
+              lemmatize = False,
+              batch_size = 50,
+              glove_file = 'glove.6B.300d.txt'):
+    
+    incorrect_data_structure_msg = """You should include the data argument to point to your custom directory. Inside that directory you should have all the files for which you wish to predict topics in text format.'"""
+    
+    assert os.path.exists(os.path.join(data_directory)), print(incorrect_data_structure_msg)
+        
+    no_token = False
+    
+    pred_data = []
+    for root, _, files in os.walk(data_directory):
+        for file in files:
+            with open(os.path.join(root, file)) as f:
+                pred_data.append(' '.join(f.readlines()))
+    
+    if preprocess:
+        pred_data_preprocessed, pred_data = preprocess_default(pred_data, just_alpha, min_length, lemmatize)
+    
+    else:
+        pred_data_preprocessed = pred_data
+    
+    cv = CountVectorizer(max_features = max_target)
+    
+    Y_pred = cv.fit_transform(pred_data_preprocessed).toarray()
+    
+    if use_glove:
+        wordToIndex,indexToWord,wordToGlove=readGloveFile(glove_file)
+        
+        pred_dataset = WordsDataset(pred_data_preprocessed, Y_pred, wordToIndex, no_token)
+        
+        pred_dataloader = DataLoader(pred_dataset, batch_size = batch_size, shuffle = False, collate_fn = pred_dataset.collater)
+        
+        return pred_dataloader, wordToGlove, wordToIndex
+        
+    else:
+        assert sentence_encoder is not None, 'You need to provide a SentenceTransformer object to create a sentence level VQ-VAE'
+        
+        pred_embeddings = encoder.encode(pred_data)
+            
+        pred_dataset = TensorDataset(pred_embeddings, Y_pred)
+        
+        pred_dataloader = DataLoader(pred_dataset, batch_size = batch_size, shuffle = False)
+        
+        return pred_dataloader, None, None
             
         

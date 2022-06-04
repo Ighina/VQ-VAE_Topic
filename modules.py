@@ -379,6 +379,8 @@ class VQVAE(pl.LightningModule):
                                         heads,
                                         multi_view)
         
+        self.soft = soft
+        
         self.mse_loss = nn.MSELoss()
         self.lts_loss = nn.HingeEmbeddingLoss()
         self.lts_target = torch.tensor([[1.0 if x==i else -1.0 for i in range(topics)] for x in range(topics)])
@@ -389,12 +391,21 @@ class VQVAE(pl.LightningModule):
         
         self.topic_clusters = {t:{} for t in range(topics)}
         self.perplexity = compute_perplexity
+        
+        self.predictions = []
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.lr)
     
     def forward(self, batch):
-        x_tilde, z_e_x, z_q_x, indices = self.model(batch)
+        
+        if self.model.sentence_encoder:
+            x, y = batch
+            lengths = None
+        else:
+            x, y, lengths = batch
+        
+        x_tilde, z_e_x, z_q_x, indices = self.model(x, lengths)
         
         n_topics = self.model.codebook.embedding.weight.shape[0]
         
@@ -403,16 +414,12 @@ class VQVAE(pl.LightningModule):
             probabilities = soft(indices.sum(axis = 1))
             
         else:
-            indices = indices.contiguous().view(batch.shape[0], -1)
-            
-            probabilities = []
+            indices = indices.contiguous().view(x.shape[0], -1)
             
             for sequence in indices:
-                probabilities.append(torch.bincount(sequence, minlength=n_topics)/len(sequence))
+                self.predictions.append(torch.bincount(sequence, minlength=n_topics)/len(sequence))
                 
-            probabilities = torch.stack(probabilities)
-        
-        return probabilities, z_q_x
+        return torch.stack(self.predictions), z_q_x
     
     def training_step(self, batch, batch_idx):
         if self.model.sentence_encoder:
@@ -499,7 +506,7 @@ class VQVAE(pl.LightningModule):
         
         if self.perplexity:
             # log-exp trick to sum the probabilities of each word in the one-hot representation under each topic, following the topic matrix.
-            perplexity = -torch.log(torch.exp(torch.matmul(y, torch.log(self.topic_matrix.T.to(y.device)))).sum(axis=1)).sum()/y.sum()
+            perplexity = -torch.log(torch.exp(torch.matmul(y, torch.log(self.topic_matrix.T.to(y.device)))).sum(axis=1)+1e-36).sum()/y.sum()
         
         if self.model.sentence_encoder:
           for idx, topic in enumerate(indices):
