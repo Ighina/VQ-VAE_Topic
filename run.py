@@ -48,6 +48,13 @@ def main(args):
     print(f'Length validation set {len(valid_loader)}')
     print(f'Length test set {len(test_loader)}')
     
+    out = os.path.join(args.out_directory, args.experiment_name)
+    
+    while os.path.exists(out):
+        out += '0'
+    
+    os.mkdir(out)
+    
     glove_dim = int(re.findall('(\d+)d', args.glove_file)[0])
     
     emb_dim = glove_dim if args.glove else encoder.get_sentence_embedding_dimension()
@@ -77,12 +84,10 @@ def main(args):
     
     accelerator = 'gpu' if args.num_gpus >0 else 'cpu'
     
-    exp_number = str(len(os.listdir(args.out_directory))//3)
-    
     checkpoint_callback = ModelCheckpoint(
                 monitor='valid_loss',
-                dirpath= 'pretrained-models',
-                filename='checkpoint-{epoch:02d}-{valid_loss:.2f}' + '_' + exp_number,
+                dirpath= out,
+                filename='checkpoint-{epoch:02d}-{valid_loss:.2f}',
                 save_top_k=1,
                 mode='min',
             )
@@ -120,12 +125,11 @@ def main(args):
                                     multi_view = args.multi_view,
                                     compute_perplexity = args.return_perplexity)
     
-    if args.save_topic:
-        topic_vectors = model.model.codebook.embedding.weight.detach().cpu().numpy()
+    topic_vectors = model.model.codebook.embedding.weight.detach().cpu().numpy()
         
-        outfile = 'topic_vecs'+ exp_number
+    outfile = 'topic_vecs'
         
-        np.save(os.path.join(args.out_directory, outfile), topic_vectors)
+    np.save(os.path.join(out, outfile), topic_vectors)
     
     if sentence_encoder:
         trainer.test(model, train_loader)
@@ -148,9 +152,9 @@ def main(args):
             columns = [index2word[x] if x>0 else 'pad_token' for x in range(len(index2word)+1)]
         top_df = pd.DataFrame(topic_matrix, columns = columns)
         
-        outfile = 'topic_matrix'+exp_number+'.csv'
+        outfile = 'topic_matrix'+'.csv'
         
-        top_df.to_csv(os.path.join(args.out_directory, outfile))
+        top_df.to_csv(os.path.join(out, outfile))
         
         
     if args.glove:
@@ -215,11 +219,21 @@ def main(args):
     
     print(results)
     
-    outfile = 'coherence_scores'+ exp_number + '.json'
+    outfile = 'coherence_scores'+'.json'
     
-    with open(os.path.join(args.out_directory, outfile), 'w') as f:
+    with open(os.path.join(out, outfile), 'w') as f:
         json.dump(results, f)
-        
+    
+    hyperparameters = {}
+    for arg in vars(args):     
+        hyperparameters[arg] = getattr(args, arg)
+    
+    hyperparameters['topic_vector_file'] = os.path.join(out, 'topic_vecs.npy')
+    hyperparameters['target_size'] = len(target_vocab)
+    hyperparameters['best_model_path'] = checkpoint_callback.best_model_path
+    
+    with open(os.path.join(out, 'hyperparameters.json'), 'w') as f:
+        json.dump(hyperparameters, f)
         
 if __name__=='__main__':
     class MyParser(argparse.ArgumentParser):
@@ -237,6 +251,8 @@ if __name__=='__main__':
     parser.add_argument('--dataset', '-ds', default = 'ng20', help = 'Dataset to be used. Currently supported are ng20 and custom.')
     
     parser.add_argument('--out_directory', default = 'experiments', help = 'Output directory')
+    
+    parser.add_argument('--experiment_name', '-exp', default = 'exp0', type = str, help = 'Name of the current experiment: a folder with the same name will be created in the output directory in order to store all the results.')
     
     parser.add_argument('--glove', action= 'store_false', help = 'If included do not use glove but sentence encoders (not reccomended)')
     
